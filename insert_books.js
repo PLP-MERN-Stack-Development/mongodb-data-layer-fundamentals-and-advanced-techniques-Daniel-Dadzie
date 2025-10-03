@@ -1,16 +1,18 @@
+// insert_books.js - Script to populate MongoDB with sample book data
 
-const { get } = require('mongoose');
-const { connectDB, mongoose } = require('./connect');
+// Import MongoDB client
+const { MongoClient } = require('mongodb');
 
-const { Book } = require('../mongodb-data-layer-fundamentals-and-advanced-techniques-Daniel-Dadzie/Models/books');
+// Connection URI (replace with your MongoDB connection string if using Atlas)
+const uri = 'mongodb://Daniel:danielyaw44@localhost:27017/plp_bookstore?authSource=admin';
 
-async function getBookNames() {
-    await connectDB();
+// Database and collection names
+const dbName = 'plp_bookstore';
+const collectionName = 'books';
 
-    await Book.deleteMany({}); // Clear existing data
-
-    const sampleBooks = await Book.insertMany([
-    {
+// Sample book data
+const books = [
+  {
     title: 'To Kill a Mockingbird',
     author: 'Harper Lee',
     genre: 'Fiction',
@@ -109,15 +111,88 @@ async function getBookNames() {
     in_stock: true,
     pages: 197,
     publisher: 'HarperOne'
+  },
+  {
+    title: 'Moby Dick',
+    author: 'Herman Melville',
+    genre: 'Adventure',
+    published_year: 1851,
+    price: 12.50,
+    in_stock: false,
+    pages: 635,
+    publisher: 'Harper & Brothers'
+  },
+  {
+    title: 'Wuthering Heights',
+    author: 'Emily Brontë',
+    genre: 'Gothic Fiction',
+    published_year: 1847,
+    price: 9.99,
+    in_stock: true,
+    pages: 342,
+    publisher: 'Thomas Cautley Newby'
   }
- 
-]);
+];
 
-  console.log("Sample books inserted.");
+// Function to insert books into MongoDB
+async function insertBooks() {
+  const client = new MongoClient(uri);
 
-  await mongoose.connection.close();
-        
+  try {
+    // Connect to the MongoDB server
+    await client.connect();
+    console.log('Connected to MongoDB server');
 
+    // Get database and collection
+    const db = client.db(dbName);
+    const collection = db.collection(collectionName);
+
+    // Check if collection already has documents
+    const count = await collection.countDocuments();
+    if (count > 0) {
+      console.log(`Collection already contains ${count} documents. Dropping collection...`);
+      await collection.drop();
+      console.log('Collection dropped successfully');
+    }
+
+    // Insert the books
+    const result = await collection.insertMany(books);
+    console.log(`${result.insertedCount} books were successfully inserted into the database`);
+
+    // Display the inserted books
+    console.log('\nInserted books:');
+    const insertedBooks = await collection.find({}).toArray();
+    insertedBooks.forEach((book, index) => {
+      console.log(`${index + 1}. "${book.title}" by ${book.author} (${book.published_year})`);
+    });
+
+  } catch (err) {
+    console.error('Error occurred:', err);
+  } finally {
+    // Close the connection
+    await client.close();
+    console.log('Connection closed');
+  }
 }
 
-getBookNames();
+// Run the function
+insertBooks().catch(console.error);
+
+/*
+ * Example MongoDB queries you can try after running this script:
+ *
+ * 1. Find all books:
+ *    db.books.find()
+ *
+ * 2. Find books by a specific author:
+ *    db.books.find({ author: "George Orwell" })
+ *
+ * 3. Find books published after 1950:
+ *    db.books.find({ published_year: { $gt: 1950 } })
+ *
+ * 4. Find books in a specific genre:
+ *    db.books.find({ genre: "Fiction" })
+ *
+ * 5. Find in-stock books:
+ *    db.books.find({ in_stock: true })
+ */ 
